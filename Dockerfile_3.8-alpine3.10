@@ -1,0 +1,8 @@
+FROM python:3.8-alpine3.10
+
+# Update distribution
+RUN apk update \
+    && apk upgrade --update-cache --available
+
+# Entry point
+CMD ["python"]
