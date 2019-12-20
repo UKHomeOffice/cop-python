@@ -15,12 +15,16 @@ pipeline:
       environment: secrets
       event: deployment
 
-  build:
-    image: quay.io/ukhomeofficedigital/drone-docker
-    commands:
-      - docker build -t cop-python:${PYTHON_VERSION}-alpine${ALPINE_VERSION} -f Dockerfile_${PYTHON_VERSION}-alpine${ALPINE_VERSION} .
-    when:
-      event: push
+# Unable to put the vulnerability steps in until ACP upgrade anchore
+# with https://github.com/UKHomeOffice/application-container-platform-board/issues/1841
+# for the bug https://github.com/anchore/anchore-engine/issues/136
+
+#  build:
+#    image: quay.io/ukhomeofficedigital/drone-docker
+#    commands:
+#      - docker build -t cop-python:${PYTHON_VERSION}-alpine${ALPINE_VERSION} -f Dockerfile_${PYTHON_VERSION}-alpine${ALPINE_VERSION} .
+#    when:
+#      event: push
 
 #  vulnerability-scan:
 #    image: quay.io/ukhomeofficedigital/anchore-submission:latest
