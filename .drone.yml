@@ -24,7 +24,7 @@ pipeline:
 
   vulnerability-scan:
     image: quay.io/ukhomeofficedigital/anchore-submission:latest
-    dockerfile: Dockerfile
+    dockerfile: Dockerfile_${PYTHON_VERSION}-alpine${ALPINE_VERSION}
     image_name: cop-python:${DRONE_COMMIT_SHA}
     local_image: true
     tolerate: low
