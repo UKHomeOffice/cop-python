@@ -46,6 +46,7 @@ pipeline:
         target: DOCKER_PASSWORD
     registry: quay.io
     repo: quay.io/ukhomeofficedigital/cop-python
+    dockerfile: Dockerfile_${PYTHON_VERSION}-alpine${ALPINE_VERSION}
     tags:
       - ${PYTHON_VERSION}-alpine${ALPINE_VERSION}
     when:
