@@ -27,8 +27,7 @@ steps:
     - secrets
 
 - name: image_to_quay
-  pull: if-not-exists
-  image: quay.io/ukhomeofficedigital/drone-docker
+  image: plugins/docker
   settings:
     dockerfile: Dockerfile_3.8-alpine3.10
     registry: quay.io
