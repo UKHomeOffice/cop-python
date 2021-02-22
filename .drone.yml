@@ -1,77 +1,69 @@
-pipeline:
-  synch_secrets:
-    image: quay.io/ukhomeofficedigital/cop-secrets
-    environment:
-      - DRONE_SERVER=https://drone.acp.homeoffice.gov.uk
-      - DEPLOY_ENV=dev
-    secrets:
-      - source: DEV_DRONE_AWS_ACCESS_KEY_ID
-        target: AWS_ACCESS_KEY_ID
-      - source: DEV_DRONE_AWS_SECRET_ACCESS_KEY
-        target: AWS_SECRET_ACCESS_KEY
-      - source: DRONE_PUBLIC_TOKEN
-        target: DRONE_TOKEN
-    when:
-      environment: secrets
-      event: deployment
+---
+kind: pipeline
+type: kubernetes
+name: matrix-1
 
-# Unable to put the vulnerability steps in until ACP upgrade anchore
-# with https://github.com/UKHomeOffice/application-container-platform-board/issues/1841
-# for the bug https://github.com/anchore/anchore-engine/issues/136
+platform:
+  os: linux
+  arch: amd64
 
-#  build:
-#    image: quay.io/ukhomeofficedigital/drone-docker
-#    commands:
-#      - docker build -t cop-python:${PYTHON_VERSION}-alpine${ALPINE_VERSION} -f Dockerfile_${PYTHON_VERSION}-alpine${ALPINE_VERSION} .
-#    when:
-#      event: push
+steps:
+- name: synch_secrets
+  pull: if-not-exists
+  image: quay.io/ukhomeofficedigital/cop-secrets
+  environment:
+    AWS_ACCESS_KEY_ID:
+      from_secret: DEV_DRONE_AWS_ACCESS_KEY_ID
+    AWS_SECRET_ACCESS_KEY:
+      from_secret: DEV_DRONE_AWS_SECRET_ACCESS_KEY
+    DEPLOY_ENV: dev
+    DRONE_SERVER: https://drone-gh.acp.homeoffice.gov.uk
+    DRONE_TOKEN:
+      from_secret: DRONE_V1_PUBLIC_TOKEN
+    DRONE_VERSION: ${DRONE_SYSTEM_VERSION}
+  when:
+    event:
+    - promote
+    target:
+    - secrets
 
-#  vulnerability-scan:
-#    image: quay.io/ukhomeofficedigital/anchore-submission:latest
-#    dockerfile: Dockerfile_${PYTHON_VERSION}-alpine${ALPINE_VERSION}
-#    image_name: cop-python:${DRONE_COMMIT_SHA}
-#    local_image: true
-#    tolerate: low
-#    fail_on_detection: false
-#    when:
-#      branch: master
-#      event: push
-
-  image_to_quay:
-    image: quay.io/ukhomeofficedigital/drone-docker
-    secrets:
-      - source: QUAY_USERNAME
-        target: DOCKER_USERNAME
-      - source: QUAY_PASSWORD
-        target: DOCKER_PASSWORD
+- name: image_to_quay
+  image: plugins/docker
+  settings:
+    dockerfile: Dockerfile_3.8-alpine3.10
     registry: quay.io
     repo: quay.io/ukhomeofficedigital/cop-python
-    dockerfile: Dockerfile_${PYTHON_VERSION}-alpine${ALPINE_VERSION}
     tags:
-      - ${PYTHON_VERSION}-alpine${ALPINE_VERSION}
-    when:
-      event: push
-      branch: master
+    - 3.8-alpine3.10
+  environment:
+    DOCKER_PASSWORD:
+      from_secret: QUAY_PASSWORD
+    DOCKER_USERNAME:
+      from_secret: QUAY_USERNAME
+  when:
+    branch:
+    - master
+    event:
+    - push
 
-  notify:
-    image: plugins/slack
-    secrets: [ SLACK_WEBHOOK ]
+- name: notify
+  pull: if-not-exists
+  image: plugins/slack
+  settings:
     channel: cop-deployments
+    template: "{{#build.deployTo}}\n  *{{repo.name}} - Build {{build.number}} - {{uppercasefirst build.deployTo}} - {{uppercase build.status}}*\n{{else}}\n  *{{repo.name}} - Build {{build.number}} - Development - {{uppercase build.status}}*\n{{/build.deployTo}} {{build.link}}\n"
     username: Drone Build Watcher
-    template: >
-      {{#build.deployTo}}
-        *{{repo.name}} - Build {{build.number}} - {{uppercasefirst build.deployTo}} - {{uppercase build.status}}*
-      {{else}}
-        *{{repo.name}} - Build {{build.number}} - Development - {{uppercase build.status}}*
-      {{/build.deployTo}}
-      {{build.link}}
-    when:
-      branch: master
-      event: [ push, deployment ]
-      status: [ success, failure ]
+  environment:
+    SLACK_WEBHOOK:
+      from_secret: SLACK_WEBHOOK
+  when:
+    branch:
+    - master
+    event:
+    - push
+    - promote
+    status:
+    - success
+    - failure
 
-matrix:
-  ALPINE_VERSION:
-    - 3.10
-  PYTHON_VERSION:
-    - 3.8
+...
